@@ -196,7 +196,9 @@ const config: Config = {
   // watchman: true,
   // testEnvironment: "node",
   transform: {
-    "^.+.tsx?$": ["ts-jest",{}],
+    "^.+.tsx?$": ["ts-jest",{
+      tsconfig: 'tsconfig.base.json',
+    }],
   },
 };
 

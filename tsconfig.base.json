@@ -6,6 +6,7 @@
     "sourceMap": true,
     "allowJs": true,
     "moduleResolution": "Node",
+    "esModuleInterop": true,
     "declaration": true,
   },
   "include": ["./src/**/*"],

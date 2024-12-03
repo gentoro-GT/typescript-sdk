@@ -17,8 +17,12 @@ describe('Initialize SDK', () => {
         try {
             new Gentoro(config);
             fail('It should not have come here!')
-        } catch (e : any) {
-            expect(e.message).toContain('api_key');
+        } catch (e : unknown) {
+            if (e instanceof Error) {
+                expect(e.message).toContain('api_key');
+            } else {
+                fail('Should be a validation error');
+            }
         }
     });
 
