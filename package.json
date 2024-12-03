@@ -1,0 +1,51 @@
+{
+  "name": "@gentoro/sdk",
+  "version": "1.0.0",
+  "description": "Gentoro SDK for Typescript",
+  "source": "./src/index.ts",
+  "main": "./build/cjs/index.js",
+  "module": "./build/esm/index.js",
+  "types": "./build/types/index.d.ts",
+  "browser": "./build/cjs/index.js",
+  "unpkg": "./build/cjs/index.js",
+  "scripts": {
+    "test": "jest",
+    "compile": "tsc -b ./tsconfig.cjs.json ./tsconfig.esm.json ./tsconfig.types.json",
+    "build:clean": "rm -rf ./build",
+    "build": "npm run build:clean && npm run compile && node ./scripts/prepare-package-json",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "typescript",
+    "sdk",
+    "api",
+    "client"
+  ],
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "author": "Gentoro R&D",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@sinclair/typebox": "^0.34.9",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.1",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "exports": {
+    ".": {
+      "types": "./build/types/lib.d.ts",
+      "require": "./build/cjs/lib.js",
+      "import": "./build/esm/lib.js",
+      "default": "./build/esm/lib.js"
+    }
+  }
+}
