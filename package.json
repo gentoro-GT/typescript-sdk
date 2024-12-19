@@ -14,7 +14,9 @@
     "compile": "tsc -b ./tsconfig.cjs.json ./tsconfig.esm.json ./tsconfig.types.json",
     "build:clean": "rm -rf ./build",
     "build": "npm run build:clean && npm run compile && node ./scripts/prepare-package-json",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "copy-static-files": "cp ./README.md ./build && cp ./LICENSE ./build",
+    "npmjs-publish": "npm run build && npm run copy-static-files && npm publish --access=public"
   },
   "keywords": [
     "typescript",
@@ -27,6 +29,12 @@
     "README.md"
   ],
   "author": "Gentoro R&D",
+  "homepage": "https://github.com/gentoro-GT/typescript-sdk",
+  "bugs": "https://github.com/gentoro-GT/typescript-sdk/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gentoro-GT/typescript-sdk"
+  },
   "license": "Apache-2.0",
   "devDependencies": {
     "@eslint/js": "^9.16.0",

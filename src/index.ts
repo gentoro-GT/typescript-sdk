@@ -1,5 +1,5 @@
 // your-module
-import {TSchema} from "@sinclair/typebox/build/cjs/type/schema/schema";
+import {TSchema} from "@sinclair/typebox";
 import {Value} from "@sinclair/typebox/value";
 
 export * from "./types/types"

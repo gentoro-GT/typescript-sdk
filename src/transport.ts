@@ -1,6 +1,6 @@
-import {BaseObject, KeyValuePair, Request, Response, SdkConfig} from "./types/types";
-import {TSchema} from "@sinclair/typebox/build/cjs/type/schema/schema";
+import {BaseObject, Request, Response, SdkConfig} from "./types/types";
 import { Value } from '@sinclair/typebox/value'
+import { TSchema } from '@sinclair/typebox'
 import axios, {AxiosInstance, AxiosRequestConfig, RawAxiosRequestHeaders} from "axios";
 
 
