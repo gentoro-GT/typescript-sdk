@@ -1,6 +1,6 @@
 {
   "name": "@gentoro/sdk",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Gentoro SDK for Typescript",
   "source": "./src/index.ts",
   "main": "./build/cjs/index.js",
@@ -31,7 +31,6 @@
   "devDependencies": {
     "@eslint/js": "^9.16.0",
     "@jest/globals": "^29.7.0",
-    "@sinclair/typebox": "^0.34.9",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.1",
     "eslint": "^9.16.0",
@@ -42,14 +41,15 @@
     "typescript-eslint": "^8.17.0"
   },
   "dependencies": {
-    "dotenv": "^16.4.5"
+    "@sinclair/typebox": "^0.34.9",
+    "axios": "^1.7.9",
+    "openai": "^4.76.3"
   },
   "exports": {
     ".": {
-      "types": "./build/types/lib.d.ts",
-      "require": "./build/cjs/lib.js",
-      "import": "./build/esm/lib.js",
-      "default": "./build/esm/lib.js"
+      "require": "./build/cjs/index.js",
+      "import": "./build/esm/index.js",
+      "default": "./build/esm/index.js"
     }
   }
 }

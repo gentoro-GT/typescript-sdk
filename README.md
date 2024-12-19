@@ -1,4 +1,4 @@
-# Toolhouse TypeScript SDK
+# Gentoro TypeScript SDK
 
 Welcome to the [Gentoro TypeScript SDK](https://gentoro.com/docs/quickstart/quick-start-typescript) documentation. 
 This guide will help you get started with integrating and using the SDK in your project.
@@ -31,34 +31,16 @@ To obtain an API Key, register at [Gentoro](https://gentoro.com/).
 
 ### Setting the Access Token
 
-When initializing the SDK, set the access token as follows:
+When initializing the SDK, provide the configuration as follows:
 
 ```ts
-const gentoro = new Gentoro({
-  apiKey: process.env['GENTORO_API_KEY']
-});
-```
-
-The `apiKey` is the only mandatory parameter and represents the API key required to authenticate with the tool provider.
-
-## Configuration Options
-
-In addition to the `apiKey`, you can configure the following options:
-
-- `provider`: Specifies the provider, such as 'openai', 'anthropic', or 'vercel'. Defaults to 'openai'.
-- `baseUrl`: Optionally specify the base URL for API requests.
-- `timeoutMs`: The timeout for API requests, in milliseconds.
-- `metadata`: Additional metadata to include with requests.
-
-Example:
-
-```ts
-const gentoro = new Gentoro({
-  apiKey: process.env['GENTORO_API_KEY'],
-  provider: 'anthropic',
-  timeoutMs: 10000,
-  metadata: { customField: 'value' }
-});
+const _config:SdkConfig = {
+    apiKey: import.meta.env.VITE_GENTORO_API_KEY, // Your Gentoro API Key
+    baseUrl: import.meta.env.VITE_GENTORO_BASE_URI, // Base Url where the Gentoro API is hosted
+    authModBaseUrl: import.meta.env.VITE_GENTORO_AUTH_MOD_BASE_URI, // Base Url where the Gentoro Auth module UI is hosted
+    provider: Providers.Openai, // The provider you want to use
+};
+const _gentoro:Gentoro = new Gentoro(_config);
 ```
 
 ## Usage
@@ -66,38 +48,56 @@ const gentoro = new Gentoro({
 Here's a basic example demonstrating how to authenticate and retrieve available tools:
 
 ```ts
-import { Toolhouse } from '@toolhouseai/sdk';
+import { Gentoro } from '@gentoro/sdk';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
 async function main() {
-    const gentoro = new Gentoro({
-        apiKey: process.env['GENTORO_API_KEY']
-    });
-  
-    // Watch for authentication request
-    // Gentoro SDK will trigger this method, for each authenticaton requested by the Server.
-    // Note that is only done once per session.
-    gentoro.addAuthenticationEventListiner(GentoroAuthenticationEventType.REQUEST, (authRequest: GentoroAuthRequest) => {
-        // Implement your external authentication logic here
-        // Call resolve method to pass authentication data to the SDK
-        authRequest.resolve({...});
+    // Initialize the Open AI client
+    const _openai = new OpenAI.Client({
+        apiKey: process.env['OPENAI_API_KEY'],
     });
     
-    const chatCompletion = await client.chat.completions.create({
-        messages,
-        tools
+    // Configure and Initialize Gentoro SDK
+    const _config:SdkConfig = {
+        apiKey: process.env['GENTORO_API_KEY'], // Your Gentoro API Key
+        baseUrl: process.env['GENTORO_BASE_URI'], // Base Url where the Gentoro API is hosted
+        authModBaseUrl: process.env['GENTORO_AUTH_MOD_BASE_URI'], // Base Url where the Gentoro Auth module UI is hosted
+        provider: Providers.Openai, // The provider you want to use
+    };
+    const _gentoro:Gentoro = new Gentoro(_config);
+    
+    // Gather user inference content
+    const _messages: ChatCompletionMessageParam[] = [{
+        role: 'user',
+        content: 'How many e-mails I currently have in my Gmail mailbox?',
+    }];
+
+    // Fetch tools from Gentoro.
+    // Bridge UIDs are generated and captured at Gentoro's Studio.
+    const _tools = await _gentoro.getTools(process.env['GENTORO_BRIDGE_UID'], _messages) as ChatCompletionTool[];
+
+    // Invoke OpenAI API to generate completions, providing context (messages) and available tools
+    let _completion:ChatCompletion  = await _client.chat.completions.create({
+        messages: _messages,
+        model: process.env['OPENAI_MODEL'], //gpt-4o-mini for example
+        tools: _tools,
     });
 
-    const openAiMessage = await gentoro.runTools(chatCompletion) as OpenAI.Chat.Completions.ChatCompletionMessageParam[]
-    const newMessages = [...messages, ...openAiMessage]
+    // Check if OpenAI requested tool_calls, if yes, delegates their execution to Gentoro, and capture the output
+    _messages.push(... await _gentoro.runTools(_completion) as OpenAI.Chat.Completions.ChatCompletionMessageParam[])
 
+    // Callback OpenAI with function call generated results
+    _completion:ChatCompletion  = await _client.chat.completions.create({
+        messages: _messages,
+        model: process.env['OPENAI_MODEL'], //gpt-4o-mini for example
+        tools: _tools,
+    });
 
-
-
-    const tools = await gentoro.runTools(messages);
-  console.log(tools);
+    // Print the completion    
+    console.log(_completion.choices[0].message.content);
+    // You have a total of 10 emails in your Gmail mailbox.
 }
 
 main();
@@ -107,31 +107,23 @@ main();
 
 ### Methods
 
-#### getTools()
+#### getTools(bridgeUid: string, messages: ChatCompletionMessageParam[]): Promise<ChatCompletionTool[]>
 
 Fetches tools from a specific bridge (Bridge UIDs are captured from Gentoro's Studio).
 
 ```ts
-const tools = await gentoro.getTools({
-    bridge: process.env['BRIDGE_UID'],
-});
-console.log(tools);
+const _messages: ChatCompletionMessageParam[] = ...;
+const _tools = await _gentoro.getTools(process.env['GENTORO_BRIDGE_UID'], _messages) as ChatCompletionMessageParam[];
 ```
 
-#### runTools()
+#### runTools(bridgeUid: string, completion: ChatCompletion): Promise<ChatCompletion>
 
-Executes tools based on the provider and provided content.
+Analyzes the completion and runs the tools if any are requested.
+Returns pre-configured message with the tool_call message, and response.
 
 ```ts
-const tools = await gentoro.getTools({bridge: process.env['BRIDGE_UID']});
-const chatCompletion = await client.chat.completions.create({
-  messages,
-  model: 'gpt-3.5-turbo',
-  tools.asOpenAI(),
-});
-
-const openAiMessage = await gentoro.runTools(chatCompletion);
-console.log(openAiMessage);
+const _completion:ChatCompletion  = await _client.chat.completions.create(...);
+const _newMessages = await _gentoro.runTools(process.env['GENTORO_BRIDGE_UID'], _completion) as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
 ```
 
 ### Accessor Methods
@@ -147,11 +139,16 @@ toolhouse.metadata = { sessionId: 'newValue' };
 
 #### provider
 
-Retrieve or set the provider for tool requests.
+How SDK should handle and generate content, based on the underlining provider.
 
 ```ts
-console.log(gentoro.provider);
-toolhouse.provider = 'anthropic';
+export enum Providers {
+    Openai,
+    Anthropic,
+    OpenaiAssistants,
+    Vercel,
+    Gentoro
+}
 ```
 
 ## Error Handling
