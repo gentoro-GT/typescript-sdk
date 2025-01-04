@@ -126,20 +126,9 @@ const _completion:ChatCompletion  = await _client.chat.completions.create(...);
 const _newMessages = await _gentoro.runTools(process.env['GENTORO_BRIDGE_UID'], _completion) as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
 ```
 
-### Accessor Methods
+### Providers
 
-#### metadata
-
-Retrieve or set the metadata used in tool requests.
-
-```ts
-console.log(gentoro.metadata);
-toolhouse.metadata = { sessionId: 'newValue' };
-```
-
-#### provider
-
-How SDK should handle and generate content, based on the underlining provider.
+A provider defines how SDK should handle and generate content.
 
 ```ts
 export enum Providers {
@@ -148,18 +137,6 @@ export enum Providers {
     OpenaiAssistants,
     Vercel,
     Gentoro
-}
-```
-
-## Error Handling
-
-Wrap API calls in try-catch blocks to handle potential errors:
-
-```ts
-try {
-  const tools = await gentoro.getTools({...});
-} catch (error) {
-  console.error(error);
 }
 ```
 
