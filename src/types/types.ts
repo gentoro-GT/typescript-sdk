@@ -9,12 +9,29 @@ export enum Providers {
 
 export type ProviderTypes = keyof Providers;
 
+export enum AuthenticationScope {
+    Metadata = 'metadata',
+    ApiKey = 'api_key'
+}
+
+export type ScopeForMetadata = Static<typeof ScopeForMetadataSchema> & BaseObject;
+export const ScopeForMetadataSchema = Type.Object({
+    keyName: Type.String(),
+});
+
+export type Authentication = Static<typeof AuthenticationSchema> & BaseObject;
+export const AuthenticationSchema = Type.Object({
+    scope: Type.Enum(AuthenticationScope),
+    metadata: Type.Optional(ScopeForMetadataSchema),
+});
+
 export interface SdkConfig {
     baseUrl?: string;
     authModBaseUrl?: string;
     timeoutMs?: number;
     apiKey?: string;
-    provider?: Providers
+    provider?: Providers;
+    authentication?: Authentication;
 }
 
 export type BaseObject = {};
@@ -83,18 +100,6 @@ export const GetToolsResponseSchema = Type.Object({
     tools: Type.Array(ToolDefSchema),
 });
 
-
-export enum AuthenticationScope {
-    Metadata = 'metadata',
-    ApiKey = 'api_key'
-}
-
-
-export type ScopeForMetadata = Static<typeof ScopeForMetadataSchema> & BaseObject;
-export const ScopeForMetadataSchema = Type.Object({
-    keyName: Type.String(),
-});
-
 export type TextContent = Static<typeof AuthenticationDataSchema> & BaseObject;
 export const TextContentSchema = Type.Object({
     text: Type.String()
@@ -142,12 +147,6 @@ export const AuthenticationDataSchema = Type.Object({
     requestUid: Type.String(),
     requestSecret: Type.String(),
     values: Type.Array(DataValueSchema),
-});
-
-export type Authentication = Static<typeof AuthenticationSchema> & BaseObject;
-export const AuthenticationSchema = Type.Object({
-    scope: Type.Enum(AuthenticationScope),
-    metadata: Type.Optional(ScopeForMetadataSchema),
 });
 
 export type FunctionCall = Static<typeof FunctionCallSchema> & BaseObject;

@@ -26,7 +26,7 @@ import {
     GetAuthStatusResponse,
     GetAuthStatusResponseSchema,
     AuthenticationStatus,
-    AuthStatusError, AuthRequests, AuthenticationType,
+    AuthStatusError, AuthRequests, AuthenticationType, Authentication,
 } from "./types/types";
 import {Transport} from "./transport";
 import OpenAI from "openai";
@@ -41,6 +41,7 @@ export class Gentoro {
     private _eventListeners: Map<SdkEventType, SdkEventHandler[]> = new Map<SdkEventType, SdkEventHandler[]>();
     private _authRequestIntervalCheckerId: ReturnType<typeof setTimeout> | null = null;
     private _authModUri: string;
+    private _authentication: Authentication;
     constructor(readonly config: SdkConfig, metadata: KeyValuePair[] = [] ) {
         this._transport = new Transport(config);
         if (config.apiKey == null) {
@@ -50,6 +51,11 @@ export class Gentoro {
         if (this._authModUri == null) {
             throw new Error('Authentication module base URL is required, in case one or more tools requires authentication');
         }
+
+        this._authentication = config.authentication ?? {
+            scope: AuthenticationScope.ApiKey,
+        };
+
         this._metadata.push(...metadata);
     }
 
@@ -121,9 +127,7 @@ export class Gentoro {
                     messages: messages,
                 },
                 metadata: this._metadata,
-                authentication: {
-                    scope: AuthenticationScope.ApiKey,
-                },
+                authentication: this._authentication,
                 toolCalls: toolExecRequest,
             };
 
