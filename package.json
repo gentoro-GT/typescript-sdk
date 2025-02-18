@@ -1,6 +1,6 @@
 {
   "name": "@gentoro/sdk",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Gentoro SDK for Typescript",
   "source": "./src/index.ts",
   "main": "./build/cjs/index.js",
