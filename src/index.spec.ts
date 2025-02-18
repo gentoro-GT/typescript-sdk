@@ -1,7 +1,15 @@
 import {describe, expect, test} from '@jest/globals';
 import {Gentoro} from "./index";
-import {ExecResult, ExecResultSchema, Providers, SdkConfig, SdkEventType} from "./types/types";
+import {ExecResult, ExecResultSchema, Providers, SdkConfig} from "./types/types";
 import {Value} from "@sinclair/typebox/value";
+
+const GENTORO_API_KEY = '52ac27a9a8b3fcd766a22bb765ede09c95fc4c3b8b9e6899e630c6dde69df255';
+const VALID_SDK_CONFIG:SdkConfig = {
+    apiKey: GENTORO_API_KEY,
+    baseUrl: 'http://localhost:8082',
+    provider: Providers.Gentoro,
+    authModBaseUrl: 'http://localhost:3000',
+};
 
 describe('Initialize SDK', () => {
     test('Standard constructor', () => {
@@ -38,14 +46,8 @@ describe('Initialize SDK', () => {
     });
 
     test('Retrieve tools', (done) => {
-        // attempt to create the SDK without passing the api key
-        const config:SdkConfig = {
-            apiKey: 'e1dfca45887c25cfd325ac0575fefcd4ad9e49b14acab2524d66c7937e97cb7b',
-            baseUrl: 'http://localhost:8082',
-            provider: Providers.Openai,
-        };
-        const gentoro = new Gentoro(config);
-        gentoro.getTools('1czQqh6mGQG4KCkLYCITNU')
+        const gentoro = new Gentoro(VALID_SDK_CONFIG);
+        gentoro.getTools("YWgJ0EnCKN2WanbrBZRcG")
             .then((tools) => {
                 expect(tools).not.toBeNull();
                 expect(tools.length).toBeGreaterThan(0);
@@ -56,32 +58,37 @@ describe('Initialize SDK', () => {
     });
 
     test('Run tools', (done) => {
-        // attempt to create the SDK without passing the api key
-        const config:SdkConfig = {
-            apiKey: 'e1dfca45887c25cfd325ac0575fefcd4ad9e49b14acab2524d66c7937e97cb7b',
-            baseUrl: 'http://localhost:8082',
-            provider: Providers.Gentoro,
-        };
-        const gentoro = new Gentoro(config);
-        gentoro.addSdkEventListener(SdkEventType.AUTHENTICATION_REQUEST, (event) => {``
-            gentoro.handleAuthenticationRequest(event.eventInfo, {
-                open: (url, target  ) => {
-                    console.log('Opening URL: ', url);
+        const gentoro = new Gentoro(VALID_SDK_CONFIG);
+        gentoro.runTools("1AOdh4JxSSbOZRfX9wO3cF", [],  [
+                {
+                    id: 'call_upLJnDnbMAlCjXKoqVVdSTmy',
+                    type: 'tool_call',
+                    details: {
+                        name: 'slack_send_message_to_channel',
+                        arguments: '{"channel_name":"oncall-devops","message_text":"**Incident Summary: Application Crashing on Login**\\n\\n**Description:** After a recent deployment, users reported that the application crashes upon entering valid login credentials. The issue was traced to a null pointer exception introduced in the new authentication logic.\\n\\n**Impact:** Users are unable to log in, resulting in service downtime for 100% of active users.\\n\\n**Resolution Steps:** Rolled back to the previous version of the login module and scheduled a hotfix deployment after thorough testing. We will keep you updated on the progress."}'
+                    }
                 },
-            } as Window);
-        });
-
-        gentoro.runTools('1czQqh6mGQG4KCkLYCITNU', [], [{
-            id: '1',
-            type: 'function',
-            details: {
-                name: 'clickup_remove_tag',
-                arguments: '{team_id: "123", space_name: "test", tag_name: "test"}',
-            }
-        }]).then((execResults) => {
+                {
+                    id: 'call_B3AsH8iaQOIlr14tqjOJ2Sa5',
+                    type: 'tool_call',
+                    details: {
+                        name: 'slack_send_message_to_channel',
+                        arguments: '{"channel_name":"oncall-dev","message_text":"**Incident Summary: Application Crashing on Login**\\n\\n**Description:** After a recent deployment, users reported that the application crashes upon entering valid login credentials. The issue was traced to a null pointer exception introduced in the new authentication logic.\\n\\n**Impact:** Users are unable to log in, resulting in service downtime for 100% of active users.\\n\\n**Resolution Steps:** Rolled back to the previous version of the login module and scheduled a hotfix deployment after thorough testing. We will keep you updated on the progress."}'
+                    }
+                },
+                {
+                    id: 'call_sZmRecBSdzVoOEFi9PcO4BlF',
+                    type: 'tool_call',
+                    details: {
+                        name: 'slack_send_message_to_channel',
+                        arguments: '{"channel_name":"oncall-support","message_text":"**Incident Summary: Application Crashing on Login**\\n\\n**Description:** After a recent deployment, users reported that the application crashes upon entering valid login credentials. The issue was traced to a null pointer exception introduced in the new authentication logic.\\n\\n**Impact:** Users are unable to log in, resulting in service downtime for 100% of active users.\\n\\n**Resolution Steps:** Rolled back to the previous version of the login module and scheduled a hotfix deployment after thorough testing. We will keep you updated on the progress."}'
+                    }
+                }
+            ]
+        ).then((execResults) => {
             expect(execResults).not.toBeNull();
             expect(execResults.length).toBeGreaterThan(0);
-            expect(Value.Check(ExecResultSchema, execResults)).toBeTruthy()
+            expect(Value.Check(ExecResultSchema, execResults[0])).toBeTruthy()
             const _result:ExecResult = Value.Parse(ExecResultSchema, execResults[0]);
             expect(_result.toolCallId).toBe('1');
             done();

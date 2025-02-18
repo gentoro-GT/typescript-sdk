@@ -26,7 +26,7 @@ import {
     GetAuthStatusResponse,
     GetAuthStatusResponseSchema,
     AuthenticationStatus,
-    AuthStatusError, AuthRequests, AuthenticationType, Authentication,
+    AuthStatusError, AuthRequests, Authentication,
 } from "./types/types";
 import {Transport} from "./transport";
 import OpenAI from "openai";
@@ -39,7 +39,7 @@ export class Gentoro {
     private _transport: Transport;
     private _metadata: KeyValuePair[] = [];
     private _eventListeners: Map<SdkEventType, SdkEventHandler[]> = new Map<SdkEventType, SdkEventHandler[]>();
-    private _authRequestIntervalCheckerId: ReturnType<typeof setTimeout> | null = null;
+    private _authRequestIntervalCheckerId: NodeJS.Timeout | null = null;
     private _authModUri: string;
     private _authentication: Authentication;
     constructor(readonly config: SdkConfig, metadata: KeyValuePair[] = [] ) {
@@ -47,9 +47,11 @@ export class Gentoro {
         if (config.apiKey == null) {
             throw new Error('The api_key client option must be set either by passing api_key to the SDK or by setting the GENTORO_API_KEY environment variable')
         }
-        this._authModUri = config.authModBaseUrl;
-        if (this._authModUri == null) {
+
+        if ( (config.authModBaseUrl || null) === null) {
             throw new Error('Authentication module base URL is required, in case one or more tools requires authentication');
+        } else {
+            this._authModUri = config.authModBaseUrl as string;
         }
 
         this._authentication = config.authentication ?? {
@@ -67,15 +69,12 @@ export class Gentoro {
     getTools = (bridgeUid: string, messages: Message[] = [] ): Promise<ToolDef[] | ChatCompletionTool []> => {
         return new Promise<ToolDef[] | ChatCompletionTool []>((resolve, reject) => {
             const requestContent:GetToolsRequest = {
-                context: {
-                    bridgeUid: bridgeUid,
-                    messages: messages,
-                },
+                messages: messages,
                 metadata: this._metadata,
             };
 
             const request: Request<GetToolsRequest> = {
-                uri: '/bornio/v1/inference/gentoro/gettools',
+                uri: '/bornio/v1/inference/'+bridgeUid+'/retrievetools',
                 content: requestContent,
             };
 
@@ -111,28 +110,45 @@ export class Gentoro {
         }) as ToolDef[] | ChatCompletionTool[];
     }
 
+    runToolNatively = (bridgeUid: string, toolName: string, params: object ): Promise<ExecResult> => {
+        return new Promise<ExecResult>((resolve, reject) => {
+            const requestContent:ToolCall = {
+                id: 'native',
+                type: 'function',
+                details: {
+                    name: toolName,
+                    arguments: params != null ? JSON.stringify(params) : '{}',
+                },
+            };
+            this.runTools(bridgeUid, null, [requestContent])
+                .then((result: ExecResult[]) => {
+                    resolve(result[0]);
+                }).catch((error) => {
+                    reject(error);
+                });
+
+        });
+    }
+
     runTools = (bridgeUid: string,
                 messages: Message[] | null,
                 result: OpenAI.ChatCompletion | ToolCall[] ): Promise<ExecResult[] | ChatCompletionToolMessageParam [] | null> => {
         return new Promise<ExecResult[] | ChatCompletionToolMessageParam [] | null>((resolve, reject) => {
-            const toolExecRequest: ToolCall[] = this.asInternalToolCalls(result);
+            const toolExecRequest: ToolCall[] | null = this.asInternalToolCalls(result);
             if( toolExecRequest == null || toolExecRequest.length === 0 ) {
                 resolve([]);
                 return;
             }
 
             const requestContent:RunToolsRequest = {
-                context: {
-                    bridgeUid: bridgeUid,
-                    messages: messages,
-                },
+                messages: messages === null ? [] : messages,
                 metadata: this._metadata,
                 authentication: this._authentication,
                 toolCalls: toolExecRequest,
             };
 
             const request: Request<RunToolsRequest> = {
-                uri: '/bornio/v1/inference/gentoro/runtools',
+                uri: '/bornio/v1/inference/'+bridgeUid+'/runtools',
                 content: requestContent,
             };
 
@@ -156,7 +172,8 @@ export class Gentoro {
                             } as SdkError;
                         }) );
                     } else if( authRequests.length > 0 ) {
-                        if( !this._eventListeners.has(SdkEventType.AUTHENTICATION_REQUEST) || this._eventListeners.get(SdkEventType.AUTHENTICATION_REQUEST).length === 0 ) {
+                        if( !this._eventListeners.has(SdkEventType.AUTHENTICATION_REQUEST)
+                            || (this._eventListeners.get(SdkEventType.AUTHENTICATION_REQUEST) || []).length === 0 ) {
                             reject({
                                 code: 'AUTHENTICATION_REQUIRED',
                                 message: 'Tool execution requires authentication, and no listener is registered to handle it',
@@ -166,7 +183,7 @@ export class Gentoro {
                         const _flattenAuthRequests: {
                             type: ExecResulType,
                             toolCallId: string,
-                            toolUid: string,
+                            toolUid?: string,
                             authRequest: AuthRequest,
                         }[] = [];
                         authRequests.forEach((msg) => {
@@ -181,12 +198,12 @@ export class Gentoro {
                             });
                         });
                         // iterate through all authentication request, until done.
-                        let _pos:number = 0;
+                        let _pos = 0;
                         const authRequestOrchestrator: () => void = () => {
                             if( _pos < _flattenAuthRequests.length ) {
                                 const _authRequest = _flattenAuthRequests[_pos];
                                 const _authRequestData:AuthRequest = _authRequest.authRequest;
-                                this._eventListeners.get(SdkEventType.AUTHENTICATION_REQUEST)[0]({
+                                (this._eventListeners.get(SdkEventType.AUTHENTICATION_REQUEST) || []) [0]({
                                     eventType: SdkEventType.AUTHENTICATION_REQUEST,
                                     sdk: this,
                                     eventInfo: {
@@ -267,7 +284,7 @@ export class Gentoro {
                     }
 
                     const message = completion.choices[0].message;
-                    const tool_calls: ChatCompletionMessageToolCall[] = message.tool_calls;
+                    const tool_calls: ChatCompletionMessageToolCall[] = message.tool_calls as ChatCompletionMessageToolCall[];
                     if (tool_calls == null || tool_calls.length === 0) {
                         return [];
                     }
@@ -302,7 +319,7 @@ export class Gentoro {
     }
 
     handleAuthenticationRequest = (eventInfo: SdkAuthenticationEventInfo, window: Window ) : void => {
-        window.open(`${this._authModUri}?` +
+        window.open(`${this._authModUri}/authmod/landing?` +
                 `request_uid=${eventInfo.authRequest.requestUid}&` +
                 `request_secret=${eventInfo.authRequest.requestSecret}&` +
                 `connection_uid=${eventInfo.authRequest.connectionUid}`, '_blank');
@@ -321,7 +338,10 @@ export class Gentoro {
 
             this._transport.sendRequest<GetAuthStatusRequest, GetAuthStatusResponse>(request, GetAuthStatusResponseSchema)
                 .then((_result) => {
-                    clearTimeout(this._authRequestIntervalCheckerId);
+                    if( this._authRequestIntervalCheckerId ) {
+                        clearTimeout(this._authRequestIntervalCheckerId as NodeJS.Timeout);
+                        this._authRequestIntervalCheckerId = null;
+                    }
                     this._authRequestIntervalCheckerId = null;
                     if( _result.content.result === AuthenticationStatus.Authenticated ) {
                         eventInfo.callback({result: AuthenticationStatus.Authenticated});

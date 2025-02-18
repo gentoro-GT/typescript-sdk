@@ -34,7 +34,7 @@ export interface SdkConfig {
     authentication?: Authentication;
 }
 
-export type BaseObject = {};
+export type BaseObject = object;
 
 export interface Request <T extends BaseObject> {
     uri: string,
@@ -51,21 +51,16 @@ export const MessageSchema = Type.Object({
     content: Type.String(),
 });
 
-export type Context = Static<typeof ContextSchema> & BaseObject;
-export const ContextSchema = Type.Object({
-    bridgeUid: Type.String(),
-    messages: Type.Optional(Type.Array(MessageSchema)),
-});
 
 export type KeyValuePair = Static<typeof KeyValuePairSchema> & BaseObject;
 export const KeyValuePairSchema = Type.Object({
     key: Type.String(),
-    value: Type.String(),
+    value: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
 export type GetToolsRequest = Static<typeof GetToolsRequestSchema> & BaseObject;
 export const GetToolsRequestSchema = Type.Object({
-    context: ContextSchema,
+    messages: Type.Optional(Type.Array(MessageSchema)),
     metadata: Type.Array(KeyValuePairSchema),
 });
 
@@ -82,8 +77,8 @@ export const FunctionParameterCollectionSchema = Type.Object({
     required: Type.Array(Type.String()),
 });
 
-export type Function = Static<typeof FunctionSchema> & BaseObject;
-export const FunctionSchema = Type.Object({
+export type FunctionDef = Static<typeof FunctionDefSchema> & BaseObject;
+export const FunctionDefSchema = Type.Object({
     name: Type.String(),
     description: Type.String(),
     parameters: FunctionParameterCollectionSchema,
@@ -92,7 +87,7 @@ export const FunctionSchema = Type.Object({
 export type ToolDef = Static<typeof ToolDefSchema> & BaseObject;
 export const ToolDefSchema = Type.Object({
     type: Type.String(),
-    definition: FunctionSchema,
+    definition: FunctionDefSchema,
 });
 
 export type GetToolsResponse = Static<typeof GetToolsResponseSchema> & BaseObject;
@@ -164,16 +159,16 @@ export const ToolCallSchema = Type.Object({
 
 export type RunToolsRequest = Static<typeof RunToolsRequestSchema> & BaseObject;
 export const RunToolsRequestSchema = Type.Object({
-    context: ContextSchema,
+    messages: Type.Optional(Type.Array(MessageSchema)),
     authentication: AuthenticationSchema,
     metadata: Type.Array(KeyValuePairSchema),
     toolCalls: Type.Array(ToolCallSchema),
 });
 
 export enum ExecResulType {
-    ExecOutput = 'exec_output',
+    ExecOutput = 'output',
     Error = 'error',
-    AuthRequest = 'auth_request'
+    AuthRequest = 'credential_signal'
 }
 
 export type ExecOutput = Static<typeof ExecOutputSchema> & BaseObject;
@@ -186,7 +181,7 @@ export type ExecError = Static<typeof ExecErrorSchema> & BaseObject;
 export const ExecErrorSchema = Type.Object({
     code: Type.String(),
     message: Type.String(),
-    details: Type.String()
+    details: Type.Array(KeyValuePairSchema),
 });
 
 export type AuthSchemaField = Static<typeof AuthSchemaFieldSchema> & BaseObject;
@@ -253,7 +248,7 @@ export enum SdkEventType {
 }
 
 export enum AuthenticationStatus {
-    Requested = 'requested',
+    Pending = 'pending',
     Authenticated = 'authenticated',
     Expired = 'expired',
     Error = 'error',
@@ -270,7 +265,7 @@ export const SdkAuthenticationEventInfoCallbackSchema = Type.Function( [Type.Obj
 export type SdkAuthenticationEventInfo = Static<typeof SdkAuthenticationEventInfoSchema> & BaseObject;
 export const SdkAuthenticationEventInfoSchema = Type.Object({
     toolCallId: Type.String(),
-    toolUid: Type.String(),
+    toolUid: Type.Optional(Type.String()),
     authRequest: AuthRequestSchema,
     callback: SdkAuthenticationEventInfoCallbackSchema
 });
